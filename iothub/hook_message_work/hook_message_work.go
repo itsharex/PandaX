@@ -39,6 +39,9 @@ func (s *HookService) handleOne(msg *netbase.DeviceEventInfo) {
 				<-s.Ch
 			}
 		}()
+		// 去除上传数据的非法空字符
+		// msg.Datas = strings.ReplaceAll(msg.Datas, "\\u0000", "")
+
 		switch msg.Type {
 		case message.RowMes, message.AttributesMes, message.TelemetryMes, message.RpcRequestFromDevice:
 			msgVals := make(map[string]interface{})
@@ -179,11 +182,15 @@ func SetDeviceShadow(etoken *model.DeviceAuth, msgVals map[string]interface{}, m
 	for key, value := range msgVals {
 		if message.AttributesMes == msgType {
 			err := shadow.DeviceShadowInstance.SetDevicePoint(etoken.Name, global.TslAttributesType, key, value)
-			biz.ErrIsNilAppendErr(err, "设置设备影子点失败")
+			if err != nil {
+				global.Log.Error("设置设备影子点失败", err)
+			}
 		}
 		if message.TelemetryMes == msgType {
 			err := shadow.DeviceShadowInstance.SetDevicePoint(etoken.Name, global.TslTelemetryType, key, value)
-			biz.ErrIsNilAppendErr(err, "设置设备影子点失败")
+			if err != nil {
+				global.Log.Error("设置设备影子点失败", err)
+			}
 		}
 	}
 }

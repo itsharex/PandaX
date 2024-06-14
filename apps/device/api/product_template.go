@@ -1,11 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"pandax/kit/biz"
 	"pandax/kit/model"
 	"pandax/kit/restfulx"
+	"pandax/kit/utils"
 	"pandax/pkg/global"
-	model2 "pandax/pkg/global/model"
 	"strings"
 
 	"pandax/apps/device/entity"
@@ -58,15 +59,16 @@ func (p *ProductTemplateApi) GetProductTemplate(rc *restfulx.ReqCtx) {
 func (p *ProductTemplateApi) InsertProductTemplate(rc *restfulx.ReqCtx) {
 	var data entity.ProductTemplate
 	restfulx.BindJsonAndValid(rc, &data)
-	data.Id = model2.GenerateID()
+	data.Id = utils.GenerateID()
 	if data.Classify == entity.ATTRIBUTES_TSL || data.Classify == entity.TELEMETRY_TSL {
 		// 向超级表及子表中添加字段
 		len := 100
 		stable := data.Pid + "_" + data.Classify
 		if data.Classify == entity.TELEMETRY_TSL {
 			if data.Type == "string" {
-				if maxLength, ok := data.Define["maxLength"].(float64); ok {
-					len = int(maxLength)
+				if maxLength, ok := data.Define["maxLength"].(json.Number); ok {
+					length, _ := maxLength.Int64()
+					len = int(length)
 				}
 			}
 		}
@@ -95,7 +97,10 @@ func (p *ProductTemplateApi) UpdateProductTemplate(rc *restfulx.ReqCtx) {
 	if data.Classify == entity.TELEMETRY_TSL {
 		stable = data.Pid + "_" + entity.TELEMETRY_TSL
 		if data.Type == "string" {
-			len = int(data.Define["length"].(int64))
+			if maxLength, ok := data.Define["maxLength"].(json.Number); ok {
+				length, _ := maxLength.Int64()
+				len = int(length)
+			}
 		}
 		global.TdDb.DelSTableField(stable, one.Key)
 		err := global.TdDb.AddSTableField(stable, data.Key, data.Type, len)

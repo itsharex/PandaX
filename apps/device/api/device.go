@@ -11,9 +11,9 @@ import (
 	"pandax/kit/biz"
 	"pandax/kit/model"
 	"pandax/kit/restfulx"
+	"pandax/kit/utils"
 	"pandax/pkg/cache"
 	"pandax/pkg/global"
-	model2 "pandax/pkg/global/model"
 	"pandax/pkg/shadow"
 	"strings"
 	"time"
@@ -114,16 +114,9 @@ func (p *DeviceApi) GetDeviceStatus(rc *restfulx.ReqCtx) {
 		}
 		// 有直接从设备影子中查询，没有查询时序数据库最后一条记录
 		if point, ok := rs[tel.Key]; ok {
-			if classify == global.TslTelemetryType {
-				value := point.Value
-				sdv.Time = point.UpdatedAt
-				sdv.Value = value
-			}
-			if classify == global.TslAttributesType {
-				if value, ok := tel.Define["default_value"]; ok {
-					sdv.Value = value
-				}
-			}
+			value := point.Value
+			sdv.Time = point.UpdatedAt
+			sdv.Value = value
 		} else {
 			var table string
 			if classify == global.TslTelemetryType {
@@ -136,6 +129,15 @@ func (p *DeviceApi) GetDeviceStatus(rc *restfulx.ReqCtx) {
 			one, err := global.TdDb.GetOne(sql, strings.ToLower(tel.Key), table)
 			if err == nil {
 				sdv.Value = one[strings.ToLower(tel.Key)]
+				sdv.Time = time.Now()
+			} else {
+				if value, ok := tel.Define["default_value"]; ok {
+					sdv.Value = value
+					sdv.Time = time.Now()
+				} else {
+					sdv.Value = "未知"
+					sdv.Time = time.Now()
+				}
 			}
 		}
 		res = append(res, sdv)
@@ -184,7 +186,7 @@ func (p *DeviceApi) InsertDevice(rc *restfulx.ReqCtx) {
 	data.OrgId = rc.LoginAccount.OrganizationId
 	list, _ := p.DeviceApp.FindList(entity.Device{Name: data.Name})
 	biz.IsTrue(!(list != nil && len(*list) > 0), fmt.Sprintf("名称%s已存在，设置其他命名", data.Name))
-	data.Id = model2.GenerateID()
+	data.Id = utils.GenerateID()
 	data.LinkStatus = global.INACTIVE
 	data.LastAt = time.Now()
 	data.Protocol = product.ProtocolName
